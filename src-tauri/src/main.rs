@@ -71,28 +71,34 @@ async fn load_credentials() -> Result<Option<(String, String)>, String> {
 }
 
 #[tauri::command]
-async fn connect(app: tauri::AppHandle) -> Result<String, String> {
-    let state = APP_STATE.read().clone();
+async fn connect(_app: tauri::AppHandle) -> Result<String, String> {
+    let (client_id, server_url, ollama_url) = {
+        let state = APP_STATE.read();
+        (
+            state.client_id.clone(),
+            state.server_url.clone(),
+            state.ollama_url.clone(),
+        )
+    };
     
-    let client_id = state.client_id.clone()
-        .ok_or("No client ID configured")?;
+    let client_id = client_id.ok_or("No client ID configured")?;
     let api_secret = keychain::get_credentials(&client_id)
         .map_err(|e| format!("Failed to get credentials: {}", e))?;
     
-    let server_url = if state.server_url.is_empty() {
+    let server_url = if server_url.is_empty() {
         "wss://aiassist-secure.replit.app/api/v1/pin/ws".to_string()
     } else {
-        state.server_url.replace("https://", "wss://").replace("http://", "ws://")
+        server_url.replace("https://", "wss://").replace("http://", "ws://")
             + "/api/v1/pin/ws"
     };
     
-    let ollama_url = if state.ollama_url.is_empty() {
+    let ollama_url = if ollama_url.is_empty() {
         "http://localhost:11434".to_string()
     } else {
-        state.ollama_url.clone()
+        ollama_url
     };
     
-    tokio::spawn(async move {
+    tauri::async_runtime::spawn(async move {
         if let Err(e) = websocket::connect_to_server(&server_url, &client_id, &api_secret, &ollama_url).await {
             log::error!("WebSocket connection error: {}", e);
             let mut state = APP_STATE.write();
@@ -105,7 +111,7 @@ async fn connect(app: tauri::AppHandle) -> Result<String, String> {
 
 #[tauri::command]
 async fn disconnect() -> Result<String, String> {
-    websocket::disconnect().await;
+    websocket::disconnect();
     let mut state = APP_STATE.write();
     state.connected = false;
     Ok("Disconnected".to_string())
@@ -118,11 +124,13 @@ async fn test_ollama(url: String) -> Result<Vec<String>, String> {
 
 #[tauri::command]
 async fn get_ollama_models() -> Result<Vec<String>, String> {
-    let state = APP_STATE.read();
-    let url = if state.ollama_url.is_empty() {
-        "http://localhost:11434".to_string()
-    } else {
-        state.ollama_url.clone()
+    let url = {
+        let state = APP_STATE.read();
+        if state.ollama_url.is_empty() {
+            "http://localhost:11434".to_string()
+        } else {
+            state.ollama_url.clone()
+        }
     };
     ollama::get_models(&url).await
 }
@@ -144,7 +152,7 @@ fn main() {
             let _tray = TrayIconBuilder::new()
                 .menu(&menu)
                 .icon(app.default_window_icon().unwrap().clone())
-                .menu_on_left_click(false)
+                .show_menu_on_left_click(false)
                 .on_menu_event(move |app, event| {
                     match event.id.as_ref() {
                         "show" => {
