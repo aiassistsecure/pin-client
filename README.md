@@ -21,7 +21,7 @@ The PIN Client allows GPU/NPU operators to offer inference services through the 
 
 ### Pre-built Binaries
 
-Download the latest release for your platform from the [Releases](https://github.com/aiassist/pin-client/releases) page.
+Download the latest release for your platform from the [Releases](https://github.com/aiassistsecure/pin-client/releases) page.
 
 ### Build from Source
 
@@ -166,6 +166,3 @@ The PIN Client runs in your system tray with the following options:
 - Check your internet connection
 - Verify the server URL is accessible
 
-## License
-
-MIT License - See LICENSE file for details.
