@@ -8,7 +8,11 @@ use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tauri::{Manager, SystemTray, SystemTrayEvent, SystemTrayMenu, CustomMenuItem};
+use tauri::{
+    Manager,
+    tray::{TrayIconBuilder, MouseButton, MouseButtonState, TrayIconEvent},
+    menu::{Menu, MenuItem},
+};
 
 static APP_STATE: Lazy<Arc<RwLock<AppState>>> = Lazy::new(|| {
     Arc::new(RwLock::new(AppState::default()))
@@ -123,36 +127,28 @@ async fn get_ollama_models() -> Result<Vec<String>, String> {
     ollama::get_models(&url).await
 }
 
-fn create_tray_menu() -> SystemTrayMenu {
-    SystemTrayMenu::new()
-        .add_item(CustomMenuItem::new("status", "Status: Disconnected").disabled())
-        .add_native_item(tauri::SystemTrayMenuItem::Separator)
-        .add_item(CustomMenuItem::new("connect", "Connect"))
-        .add_item(CustomMenuItem::new("disconnect", "Disconnect").disabled())
-        .add_native_item(tauri::SystemTrayMenuItem::Separator)
-        .add_item(CustomMenuItem::new("show", "Show Window"))
-        .add_item(CustomMenuItem::new("quit", "Quit"))
-}
-
 fn main() {
     env_logger::init();
     
-    let tray = SystemTray::new().with_menu(create_tray_menu());
-    
     tauri::Builder::default()
-        .system_tray(tray)
-        .on_system_tray_event(|app, event| {
-            match event {
-                SystemTrayEvent::LeftClick { .. } => {
-                    if let Some(window) = app.get_window("main") {
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    }
-                }
-                SystemTrayEvent::MenuItemClick { id, .. } => {
-                    match id.as_str() {
+        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_notification::init())
+        .setup(|app| {
+            let show_item = MenuItem::with_id(app, "show", "Show Window", true, None::<&str>)?;
+            let connect_item = MenuItem::with_id(app, "connect", "Connect", true, None::<&str>)?;
+            let disconnect_item = MenuItem::with_id(app, "disconnect", "Disconnect", true, None::<&str>)?;
+            let quit_item = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
+            
+            let menu = Menu::with_items(app, &[&show_item, &connect_item, &disconnect_item, &quit_item])?;
+            
+            let _tray = TrayIconBuilder::new()
+                .menu(&menu)
+                .icon(app.default_window_icon().unwrap().clone())
+                .menu_on_left_click(false)
+                .on_menu_event(move |app, event| {
+                    match event.id.as_ref() {
                         "show" => {
-                            if let Some(window) = app.get_window("main") {
+                            if let Some(window) = app.get_webview_window("main") {
                                 let _ = window.show();
                                 let _ = window.set_focus();
                             }
@@ -173,9 +169,19 @@ fn main() {
                         }
                         _ => {}
                     }
-                }
-                _ => {}
-            }
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
+            
+            Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             get_status,
