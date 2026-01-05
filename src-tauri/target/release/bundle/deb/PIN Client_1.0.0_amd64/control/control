@@ -1,0 +1,9 @@
+Package: pin-client
+Version: 1.0.0
+Architecture: amd64
+Installed-Size: 19667
+Maintainer: AiAssist Secure
+Priority: optional
+Depends: libayatana-appindicator3-1, libwebkit2gtk-4.1-0, libgtk-3-0
+Description: PIN Network Operator Client
+ PIN Client connects your Ollama instance to the P2P Inference Network

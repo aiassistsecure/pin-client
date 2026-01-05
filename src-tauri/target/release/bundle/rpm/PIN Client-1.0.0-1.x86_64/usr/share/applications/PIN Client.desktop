@@ -1,0 +1,9 @@
+[Desktop Entry]
+Categories=Development;
+Comment=PIN Network Operator Client
+Exec=pin-client
+StartupWMClass=pin-client
+Icon=pin-client
+Name=PIN Client
+Terminal=false
+Type=Application
