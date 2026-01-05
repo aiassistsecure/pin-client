@@ -39,23 +39,6 @@
     ],
     "longDescription": "PIN Client connects your Ollama instance to the P2P Inference Network",
     "shortDescription": "PIN Network Operator Client",
-    "targets": "all",
-    "linux": {
-      "deb": {
-        "depends": []
-      }
-    },
-    "macOS": {
-      "entitlements": null,
-      "exceptionDomain": "",
-      "frameworks": [],
-      "providerShortName": null,
-      "signingIdentity": null
-    },
-    "windows": {
-      "certificateThumbprint": null,
-      "digestAlgorithm": "sha256",
-      "timestampUrl": ""
-    }
+    "targets": "all"
   }
 }
