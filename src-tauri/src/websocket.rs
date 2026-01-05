@@ -14,6 +14,7 @@ static DISCONNECT_TX: Lazy<Arc<RwLock<Option<mpsc::Sender<()>>>>> =
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
+#[allow(non_camel_case_types)]
 pub enum ServerMessage {
     AUTH_SUCCESS { operator_id: String, message: String },
     ERROR { message: String },
@@ -122,12 +123,18 @@ pub async fn connect_to_server(
                                 match server_msg {
                                     ServerMessage::AUTH_SUCCESS { operator_id, message } => {
                                         log::info!("Authenticated: {} - {}", operator_id, message);
-                                        let mut state = APP_STATE.write();
-                                        state.operator_id = Some(operator_id);
-                                        state.connected = true;
+                                        
+                                        {
+                                            let mut state = APP_STATE.write();
+                                            state.operator_id = Some(operator_id);
+                                            state.connected = true;
+                                        }
                                         
                                         if let Ok(models) = ollama::get_models(&ollama_url).await {
-                                            state.models = models.clone();
+                                            {
+                                                let mut state = APP_STATE.write();
+                                                state.models = models.clone();
+                                            }
                                             let model_msg = ClientMessage {
                                                 msg_type: "MODEL_LIST".to_string(),
                                                 models: Some(models),
@@ -237,8 +244,8 @@ pub async fn connect_to_server(
     Ok(())
 }
 
-pub async fn disconnect() {
-    if let Some(tx) = DISCONNECT_TX.read().as_ref() {
-        let _ = tx.send(()).await;
+pub fn disconnect() {
+    if let Some(tx) = DISCONNECT_TX.read().clone() {
+        let _ = tx.blocking_send(());
     }
 }
